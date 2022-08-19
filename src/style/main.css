@@ -1,0 +1,25 @@
+.progressbar-spinner.active {
+   text-align: center;
+   margin: 5px 10px 15px;
+   display: inline-block;
+   border: 3px solid #fc7a0850;
+   height: 15px;
+   width: 15px;
+   border-radius: 50%;
+   border-top-color: #fc7a08;
+   animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+   to { -webkit-transform: rotate(360deg); }
+ }
+ @-webkit-keyframes spin {
+   to { -webkit-transform: rotate(360deg); }
+ }
+
+.pb-text-wrapper {
+   display: flex;
+   flex-direction: row;
+   justify-content: center;
+   align-items: center;
+}
