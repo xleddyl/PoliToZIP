@@ -8,7 +8,7 @@ The goal of the project is to provide students with an extension capable of surv
 
 ![instructions](./assets/img/screenshot1.png)
 
-## 💻 How to install 
+## 💻 How to install
 
 PoliToZIP can be installed in two ways:
 
@@ -25,13 +25,21 @@ PoliToZIP can be installed in two ways:
 - If you are **not familiar with coding** you can open an Issue in which you can explain to us what features/bugs you want/encountered and we will add/solve them as soon as possible!
 
 ## ❓ FAQ
+
 - **Why is my download slow?**
-    - Download speed depends on the number of sub-directories (not necessarily on the number of items).
+  - Download speed depends on the number of sub-directories (not necessarily on the number of items).
+- **Why is my download stuck?**
+  - If your download crashes, an error will be displayed so unless you get a message from the extension, don't worry! The MB counter is updated whenever a file is downloaded, if it appears to be stuck it's only because the extension is downloading a HUGE file.
 - **Why I get "status: 502"?**
-    - The Teaching Portal doesn't like if you try to download many files in a short amount of time and for this reason sometimes it will block you. To solve this issue simply clear the cache of the browser.
+  - The Teaching Portal doesn't like if you try to download many files in a short amount of time and for this reason sometimes it will block you. To solve this issue simply clear the cache of the browser.
 - **Who are you?**
-    - The hero PoliTo deserves, but not the one it needs.🦸‍♂️
-    
+  - The hero PoliTo deserves, but not the one it needs.🦸‍♂️
+
+## ⭐ Changelog
+
+- **v0.2.7**: added a button to stop the current download
+- **v0.2.6**: first release
+
 ## 🪲 Open issues
 
 The following list contain a set of bugs/features that need to be resolved/implemented:
@@ -41,6 +49,7 @@ The following list contain a set of bugs/features that need to be resolved/imple
 - Check for bugs by testing the extension on different scenarios.
 
 ## 🚀 Contributors
+
 <a href="https://github.com/xleddyl/PoliToZIP/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=xleddyl/PoliToZIP" />
 </a>

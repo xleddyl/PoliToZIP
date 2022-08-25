@@ -1,6 +1,6 @@
 .progressbar-spinner.active {
    text-align: center;
-   margin: 5px 10px 15px;
+   margin: 5px 10px 15px 0px;
    display: inline-block;
    border: 3px solid #fc7a0850;
    height: 15px;
@@ -10,12 +10,30 @@
    animation: spin 1s ease-in-out infinite;
 }
 
+.abort-download {
+   display: none;
+}
+.abort-download.active {
+   margin: 5px 0px 15px 10px;
+   display: block;
+   color: red;
+   font-weight: 600;
+   cursor: pointer;
+}
+.abort-download.active:hover {
+   opacity: 0.5;
+}
+
 @keyframes spin {
-   to { -webkit-transform: rotate(360deg); }
- }
- @-webkit-keyframes spin {
-   to { -webkit-transform: rotate(360deg); }
- }
+   to {
+      -webkit-transform: rotate(360deg);
+   }
+}
+@-webkit-keyframes spin {
+   to {
+      -webkit-transform: rotate(360deg);
+   }
+}
 
 .pb-text-wrapper {
    display: flex;

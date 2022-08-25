@@ -10,6 +10,7 @@ const DROP = {
    code: 'MATDROPBOX',
    url: 'https://didattica.polito.it/pls/portal30/sviluppo.filemgr_dropbox_1.handler',
 }
+let controller = new AbortController()
 
 /**
  * Module containing variables
@@ -79,19 +80,26 @@ const ServiceWorkerState = (function () {
  * Listen for messages sent by ./content_script.js and generate the ZIP
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-   generateZip(request.dirCode, request.dirName, sender.tab.id)
-      .then((msg) => sendResponse({ data: { ok: true, msg } }))
-      .catch((msg) => sendResponse({ data: { ok: false, msg } }))
-   return true
+   switch(request.type) {
+      case 'zip':
+         controller = new AbortController()
+         generateZip(request.data.dirCode, request.data.dirName, sender.tab.id)
+            .then((msg) => sendResponse({ data: { ok: true, msg } }))
+            .catch((msg) => sendResponse({ data: { ok: false, msg } }))
+         return true
+      case 'abortDownload':
+         controller.abort()
+         break;
+   }
 })
 
 /**
  * Reload the Service Worker when navigating (or refreshing) to pages with
  * matching URL
  */
-chrome.webNavigation.onBeforeNavigate.addListener(
+ chrome.webNavigation.onBeforeNavigate.addListener(
    function (details) {
-      chrome.runtime.reload()
+      controller.abort()
    },
    { url: [{ hostContains: 'didattica.polito.it', pathContains: 'pagina_corso' }] }
 )
@@ -121,9 +129,9 @@ const generateZip = (dirCode, dirName, tabId) => {
       try {
          await setConnectionType(dirCode)
          await checkCredentials(dirCode)
-         const zip = new JSZip()
          await countFiles(dirCode, 'dir', 0)
          updateUI('size', ServiceWorkerState.getFileStats().count)
+         const zip = new JSZip()
          await downloadFiles(dirCode, dirName, zip, 'dir', 0)
 
          updateUI('zip')
@@ -150,14 +158,18 @@ const generateZip = (dirCode, dirName, tabId) => {
  */
 const setConnectionType = () => {
    return new Promise(async (resolve, reject) => {
-      const response = await fetchUrl(DIDA.url, '')
-      if (response.ok) {
-         const list = await response.json()
-         const conn = list.result.length != 0 ? DIDA : DROP
-         ServiceWorkerState.setConn(conn.code, conn.url)
-         return resolve(true)
-      } else {
-         return reject('CAN NOT DETERMINE CONNECTION TYPE')
+      try{
+         const response = await fetchUrl(DIDA.url, '')
+         if (response.ok) {
+            const list = await response.json()
+            const conn = list.result.length != 0 ? DIDA : DROP
+            ServiceWorkerState.setConn(conn.code, conn.url)
+            return resolve(true)
+         } else {
+            return reject('CAN NOT DETERMINE CONNECTION TYPE')
+         }
+      } catch (e) {
+         return reject(e)
       }
    })
 }
@@ -168,44 +180,49 @@ const setConnectionType = () => {
 const downloadFiles = (code, name, parent, type, size) => {
    const conn = ServiceWorkerState.getConn()
    return new Promise(async (resolve, reject) => {
-      if (type == 'file') {
-         const response = await fetch(
-            `https://file.didattica.polito.it/download/${conn.code}/${code}?download`,
-            {
-               method: 'GET',
-               credentials: 'same-origin',
-            }
-         )
+      try {
+         if (type == 'file') {
+            const response = await fetch(
+               `https://file.didattica.polito.it/download/${conn.code}/${code}?download`,
+               {
+                  method: 'GET',
+                  credentials: 'same-origin',
+                  signal: controller.signal
+               }
+            )
 
-         if (response.ok) {
-            const blob = await response.blob()
-            parent.file(name, blob, { binary: true })
-            ServiceWorkerState.incrementFileStats(0, size)
-            updateUI('perc', ServiceWorkerState.getFileStats().downloaded)
-            return resolve(true)
-         }
-
-         return reject(`ERROR IN DOWNLOADING FILE "${name}" (status: ${response.status})`)
-      }
-      if (type == 'dir') {
-         const folder = parent.folder(name)
-         const response = await fetchUrl(conn.url, code)
-         if (response.ok) {
-            try {
-               const list = await response.json()
-               await Promise.all(
-                  list.result.map(async (item) => {
-                     if (!item.link) {
-                        await downloadFiles(item.code, item.name, folder, item.type, item.size)
-                     }
-                  })
-               )
+            if (response.ok) {
+               const blob = await response.blob()
+               parent.file(name, blob, { binary: true })
+               ServiceWorkerState.incrementFileStats(0, size)
+               updateUI('perc', ServiceWorkerState.getFileStats().downloaded)
                return resolve(true)
-            } catch (e) {
-               return reject(e)
             }
+
+            return reject(`ERROR IN DOWNLOADING FILE "${name}" (status: ${response.status})`)
          }
-         return reject(`ERROR IN FETCHING DIR "${name}" (status: ${response.status})`)
+         if (type == 'dir') {
+            const folder = parent.folder(name)
+            const response = await fetchUrl(conn.url, code)
+            if (response.ok) {
+               try {
+                  const list = await response.json()
+                  await Promise.all(
+                     list.result.map(async (item) => {
+                        if (!item.link) {
+                           await downloadFiles(item.code, item.name, folder, item.type, item.size)
+                        }
+                     })
+                  )
+                  return resolve(true)
+               } catch (e) {
+                  return reject(e)
+               }
+            }
+            return reject(`ERROR IN FETCHING DIR "${name}" (status: ${response.status})`)
+         }
+      } catch (e) {
+         return reject(e)
       }
    })
 }
@@ -218,43 +235,49 @@ const downloadFiles = (code, name, parent, type, size) => {
 const checkCredentials = async (dirCode) => {
    const conn = ServiceWorkerState.getConn()
    return new Promise(async (resolve, reject) => {
-      const testResponse = await fetchUrl(conn.url, dirCode)
-      if (testResponse.ok) {
-         const testItem = (await testResponse.json()).result[0]
-         if (testItem) {
-            const loginResponse = await fetch(
-               `https://file.didattica.polito.it/download/${conn.code}/${testItem.code}?download`,
-               {
-                  method: 'GET',
-                  credentials: 'same-origin',
-               }
-            )
-            if (loginResponse.redirected && loginResponse.url === REDIRECT_URL) {
-               const text = (await loginResponse.text()).replace(/\s+/g, '').replace(/\n+/g, '')
-               const action = he.decode(text.match(/(?<=\<formaction\=\").*?(?=\")/gs)[0])
-               const RelayState = he.decode(
-                  text.match(/(?<=name\=\"RelayState\"value\=\").*?(?=\")/gs)[0]
+      try {
+         const testResponse = await fetchUrl(conn.url, dirCode)
+         if (testResponse.ok) {
+            const testItem = (await testResponse.json()).result[0]
+            if (testItem) {
+               const loginResponse = await fetch(
+                  `https://file.didattica.polito.it/download/${conn.code}/${testItem.code}?download`,
+                  {
+                     method: 'GET',
+                     credentials: 'same-origin',
+                     signal: controller.signal
+                  }
                )
-               const SAMLResponse = he.decode(
-                  text.match(/(?<=name\=\"SAMLResponse\"value\=\").*?(?=\")/gs)[0]
-               )
-               const redirect = await fetch(action, {
-                  method: 'POST',
-                  body: `RelayState=${encodeURIComponent(
-                     RelayState
-                  )}&SAMLResponse=${encodeURIComponent(SAMLResponse)}`,
-                  headers: {
-                     'Content-Type': 'application/x-www-form-urlencoded',
-                  },
-               })
-               if (!redirect.ok) {
-                  return reject(`LOGIN ERROR (status: ${redirect.status})`)
+               if (loginResponse.redirected && loginResponse.url === REDIRECT_URL) {
+                  const text = (await loginResponse.text()).replace(/\s+/g, '').replace(/\n+/g, '')
+                  const action = he.decode(text.match(/(?<=\<formaction\=\").*?(?=\")/gs)[0])
+                  const RelayState = he.decode(
+                     text.match(/(?<=name\=\"RelayState\"value\=\").*?(?=\")/gs)[0]
+                  )
+                  const SAMLResponse = he.decode(
+                     text.match(/(?<=name\=\"SAMLResponse\"value\=\").*?(?=\")/gs)[0]
+                  )
+                  const redirect = await fetch(action, {
+                     method: 'POST',
+                     body: `RelayState=${encodeURIComponent(
+                        RelayState
+                     )}&SAMLResponse=${encodeURIComponent(SAMLResponse)}`,
+                     headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                     },
+                     signal: controller.signal
+                  })
+                  if (!redirect.ok) {
+                     return reject(`LOGIN ERROR (status: ${redirect.status})`)
+                  }
                }
             }
+            return resolve(true)
          }
-         return resolve(true)
+         return reject(`LOGIN ERROR (status: ${testResponse.status})`)
+      } catch (e) {
+         return reject(e)
       }
-      return reject(`LOGIN ERROR (status: ${testResponse.status})`)
    })
 }
 
@@ -264,22 +287,26 @@ const checkCredentials = async (dirCode) => {
 const countFiles = (code, type, size) => {
    const conn = ServiceWorkerState.getConn()
    return new Promise(async (resolve, reject) => {
-      if (type == 'file') {
-         ServiceWorkerState.incrementFileStats(size, 0)
-         return resolve(true)
-      }
-      if (type == 'dir') {
-         const response = await fetchUrl(conn.url, code)
-         if (response.ok) {
-            const list = await response.json()
-            await Promise.all(
-               list.result.map(async (item) => {
-                  if (!item.link) await countFiles(item.code, item.type, item.size)
-                  updateUI('fetch', ServiceWorkerState.getFileStats().count)
-               })
-            )
+      try {
+         if (type == 'file') {
+            ServiceWorkerState.incrementFileStats(size, 0)
+            return resolve(true)
          }
-         return resolve(true)
+         if (type == 'dir') {
+            const response = await fetchUrl(conn.url, code)
+            if (response.ok) {
+               const list = await response.json()
+               await Promise.all(
+                  list.result.map(async (item) => {
+                     if (!item.link) await countFiles(item.code, item.type, item.size)
+                     updateUI('fetch', ServiceWorkerState.getFileStats().count)
+                  })
+               )
+            }
+            return resolve(true)
+         }
+      } catch (e) {
+         return reject(e)
       }
    })
 }
@@ -295,6 +322,7 @@ const fetchUrl = async (url, code) => {
       headers: {
          'Content-Type': 'application/x-www-form-urlencoded',
       },
+      signal: controller.signal
    })
 }
 

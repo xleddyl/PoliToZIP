@@ -173,25 +173,37 @@ async function onDownloadButtonClicked(dirCode, dirName) {
       })
       const wrapper = document.createElement('div')
       const spinner = document.createElement('div')
+      const abort = document.createElement('div')
       wrapper.classList = 'pb-text-wrapper'
       spinner.classList = 'progressbar-spinner'
+      abort.classList = 'abort-download'
+      abort.innerHTML = 'X'
+      abort.onclick = () => chrome.runtime.sendMessage({type: 'abortDownload'})
       wrapper.appendChild(spinner)
       wrapper.appendChild(PB._container.querySelector('.progressbar-text'))
+      wrapper.appendChild(abort)
       PB._container.appendChild(wrapper)
 
       document.querySelector('.progressbar-spinner').classList.add('active')
-      chrome.runtime.sendMessage({ dirCode, dirName }, function (response) {
+      document.querySelector('.abort-download').classList.add('active')
+      chrome.runtime.sendMessage({type: 'zip', data: { dirCode, dirName }}, function (response) {
          document.querySelector('.progressbar-spinner').classList.remove('active')
+         document.querySelector('.abort-download').classList.remove('active')
          if (response) {
             const data = response.data
-            data.ok ? (PB.text.style.color = 'green') : (PB.text.style.color = 'red')
-            PB.setText(data.msg)
-            DOWNLOADING = false
+            if(typeof(data.msg) === 'string') {
+               data.ok ? (PB.text.style.color = 'green') : (PB.text.style.color = 'red')
+               PB.setText(data.msg)
+            } else {
+               PB.text.style.color = 'red'
+               PB.setText('DOWNLOAD ABORTED')
+            }
          }
+         DOWNLOADING = false
       })
    } else {
       window.alert(
-         'Another download is still in progress, please wait for it to finish or reload the page.'
+         'Another download is still in progress, please wait for it to finish.'
       )
    }
 }
