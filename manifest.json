@@ -1,7 +1,7 @@
 {
    "name": "PoliToZIP",
    "description": "An open source chrome extension that allows downloading folders from the Teaching Portal of Politecnico di Torino.",
-   "version": "0.2.7",
+   "version": "0.2.8",
    "manifest_version": 3,
    "host_permissions": ["*://*.polito.it/*"],
    "permissions": ["downloads", "webNavigation"],

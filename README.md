@@ -37,6 +37,7 @@ PoliToZIP can be installed in two ways:
 
 ## ⭐ Changelog
 
+- **v0.2.8**: fixed download for courses that have both "dropbox" and "materiale"
 - **v0.2.7**: added a button to stop the current download
 - **v0.2.6**: first release
 
@@ -46,6 +47,8 @@ The following list contain a set of bugs/features that need to be resolved/imple
 
 - Automate uploading the extension to the chrome web store via Github Actions.
 - Make [settings.html](./src/pages/settings.html) a better settings page.
+- Make "download whole course" more intelligent (download both "dropbox" and "materiale" if both of them are present).
+- Download bar positioning when both "dropbox" and "materiale" are present.
 - Check for bugs by testing the extension on different scenarios.
 
 ## 🚀 Contributors

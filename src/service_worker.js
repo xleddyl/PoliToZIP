@@ -156,13 +156,15 @@ const generateZip = (dirCode, dirName, tabId) => {
  * Test DIDA.url and see if it's successfull
  * if DIDA returned a non empty list then conn = DIDA
  */
-const setConnectionType = () => {
+const setConnectionType = (dirCode) => {
    return new Promise(async (resolve, reject) => {
       try{
-         const response = await fetchUrl(DIDA.url, '')
+         const response = await fetchUrl(DIDA.url, dirCode)
+         console.log(response)
          if (response.ok) {
             const list = await response.json()
-            const conn = list.result.length != 0 ? DIDA : DROP
+            console.log(list)
+            const conn = list.result[0].code != undefined ? DIDA : DROP
             ServiceWorkerState.setConn(conn.code, conn.url)
             return resolve(true)
          } else {
