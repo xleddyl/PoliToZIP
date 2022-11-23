@@ -160,10 +160,8 @@ const setConnectionType = (dirCode) => {
    return new Promise(async (resolve, reject) => {
       try{
          const response = await fetchUrl(DIDA.url, dirCode)
-         console.log(response)
          if (response.ok) {
             const list = await response.json()
-            console.log(list)
             const conn = list.result[0].code != undefined ? DIDA : DROP
             ServiceWorkerState.setConn(conn.code, conn.url)
             return resolve(true)
@@ -195,7 +193,7 @@ const downloadFiles = (code, name, parent, type, size) => {
 
             if (response.ok) {
                const blob = await response.blob()
-               parent.file(name, blob, { binary: true })
+               parent.file(name, blob)
                ServiceWorkerState.incrementFileStats(0, size)
                updateUI('perc', ServiceWorkerState.getFileStats().downloaded)
                return resolve(true)
